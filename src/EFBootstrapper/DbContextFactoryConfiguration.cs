@@ -16,7 +16,7 @@ namespace Hazzik.EFBootstrapper
 
         private static readonly Type ComplexType = typeof (ComplexTypeConfiguration<>);
 
-        private static Func<string, DbConnection> _dbConnectionFactory;
+        private static readonly Lazy<Func<string, DbConnection>> DbConnectionFactoryLazy = new Lazy<Func<string, DbConnection>>(CreateDbConnectionFactory);
         
         private readonly ICollection<Assembly> assemblies = new HashSet<Assembly>();
         private readonly string connectionString;
@@ -35,7 +35,7 @@ namespace Hazzik.EFBootstrapper
 
         private static Func<string, DbConnection> DbConnectionFactory
         {
-            get { return _dbConnectionFactory ?? (_dbConnectionFactory = CreateDbConnectionFactory()); }
+            get { return DbConnectionFactoryLazy.Value; }
         }
 
         public DbContextFactoryConfiguration AddMappingsFromAssembly(Assembly assembly)
