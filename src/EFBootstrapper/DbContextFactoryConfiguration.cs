@@ -4,6 +4,7 @@ namespace Hazzik.EFBootstrapper
     using System.Collections.Generic;
     using System.Data.Common;
     using System.Data.Entity;
+    using System.Data.Entity.Infrastructure;
     using System.Data.Entity.ModelConfiguration;
     using System.Data.Entity.ModelConfiguration.Configuration;
     using System.Linq;
@@ -20,17 +21,19 @@ namespace Hazzik.EFBootstrapper
         
         private readonly ICollection<Assembly> assemblies = new HashSet<Assembly>();
         private readonly string connectionString;
-        private readonly Type contextType;
 
         private bool autoDetectChangesEnabled;
         private bool lazyLoadingEnabled;
         private bool proxyCreationEnabled;
         private bool validateOnSaveEnabled;
+        private readonly ConstructorInfo constructor;
 
         public DbContextFactoryConfiguration(Type contextType, string connectionString)
         {
-            this.contextType = contextType;
             this.connectionString = connectionString;
+            constructor = contextType.GetConstructor(new[] {typeof (string), typeof (DbCompiledModel)});
+            if (constructor == null)
+                throw new ArgumentException(string.Format("Could not find constructor of type {0} which accepts {1} and {2}", contextType, typeof (string), typeof (DbCompiledModel)));
         }
 
         private static Func<string, DbConnection> DbConnectionFactory
@@ -101,7 +104,13 @@ namespace Hazzik.EFBootstrapper
                 .Build(connection)
                 .Compile();
 
-            return new DbContextFactory(contextType, connectionString, model)
+            var factory = Expression.Lambda<Func<DbContext>>(
+                Expression.New(constructor,
+                               Expression.Constant(connectionString),
+                               Expression.Constant(model)))
+                .Compile();
+
+            return new DbContextFactory(factory)
                        {
                            AutoDetectChangesEnabled = autoDetectChangesEnabled,
                            LazyLoadingEnabled = lazyLoadingEnabled,

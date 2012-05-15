@@ -2,19 +2,14 @@ namespace Hazzik.EFBootstrapper
 {
     using System;
     using System.Data.Entity;
-    using System.Data.Entity.Infrastructure;
 
     internal class DbContextFactory : IDbContextFactory
     {
-        private readonly string connectionString;
-        private readonly Type dataContextType;
-        private readonly DbCompiledModel model;
+        private readonly Func<DbContext> factory;
 
-        public DbContextFactory(Type dataContextType, string connectionString, DbCompiledModel model)
+        public DbContextFactory(Func<DbContext> factory)
         {
-            this.dataContextType = dataContextType;
-            this.connectionString = connectionString;
-            this.model = model;
+            this.factory = factory;
         }
 
         public bool AutoDetectChangesEnabled { get; set; }
@@ -27,7 +22,7 @@ namespace Hazzik.EFBootstrapper
 
         public DbContext Create()
         {
-            var context = (DbContext) Activator.CreateInstance(dataContextType, connectionString, model);
+            var context = factory();
             context.Configuration.AutoDetectChangesEnabled = AutoDetectChangesEnabled;
             context.Configuration.LazyLoadingEnabled = LazyLoadingEnabled;
             context.Configuration.ProxyCreationEnabled = ProxyCreationEnabled;
